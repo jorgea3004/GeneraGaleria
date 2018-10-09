@@ -2,17 +2,17 @@
 ini_set("max_execution_time",3600);
 include('SimpleImage.php'); 
 
-//$dir = "../";
-//$dest = "/jorge/dropbox/public/";
 $dir = "/jorge/htdocs/";
-$dest = "./";
-$maxSize = 500;
+$base = $dir;
+$dest = $dir . "otros/GeneraGaleria/";
+$maxSize = 1000;
+$midSize = 500;
 $tmbSize = 80;
 $dirf = '';
 $error = '';
-$marcadeagua = "firma_sm.png";
 $b=0;
 $dirfin=1;
+$marcadeagua = "firma_sm.png";
 
 function marcadeagua($img_original, $img_marcadeagua, $img_nueva, $calidad)
 {
@@ -46,6 +46,7 @@ function marcadeagua($img_original, $img_marcadeagua, $img_nueva, $calidad)
 	ImageDestroy($original); 
 	ImageDestroy($marcadeagua); 
 } 
+
 ?>
 <!doctype html>
 <html lang="es">
@@ -135,95 +136,97 @@ function marcadeagua($img_original, $img_marcadeagua, $img_nueva, $calidad)
 				if($_POST && strlen($_POST['carpeta'])>0) {
 					echo "<ul><li>Resultados:</li>";
 					$dir = $dir . $_POST['carpeta'] . "/";
+					$dirf = $_POST['galeria'] . "/";
 					if(!file_exists($dest)) {
 						echo "<li class='errores'>Carpeta DropBox de destino NO Encontrada.</li>";
 					} else {
-						foreach (scandir($dest) as $item) {
-							if ($item <> '.' and $item <> '..' and $item <> 'Thumbs.db'){
-								$dirf = $item;
-							}
-						}
-						if(!is_integer($dirf)){$dirf=$_POST['galeria'];} else {
-						$dirf++;}
+						//echo "DIR: " . $dir . "<br>";
+						//echo "DIR: " . $dest.$dirf . "<br>";
 						if(!mkdir($dest.$dirf,0777,true)) {
-							echo "<li class='errores'>No se puede crear galeria.</li>";
-						} else {
-							$gal = $dirf;
-							$titulogal = addslashes($_POST['titulo']);
-							foreach (scandir($dir) as $item) {
-								if ($item <> '.' and $item <> '..' and $item <> 'Thumbs.db'){
-									$imagen = $dir . $item;
-									$imagenr = "res_" . $item;
-									$imagent = "th_res_" . $item;
-									//echo "Procesando archivo: " . $imagen . "<br>";
-									$size = GetImageSize($imagen);
-									$anchura=$size[0];
-									$altura=$size[1]; 
-									$res=0;
-									if($anchura>$altura){
+							echo "<li class='errores'>No se puede crear galeria [".$dest.$dirf."].</li>";
+						} 
+						$gal = $_POST['galeria'];
+						$titulogal = addslashes($_POST['titulo']);
+						$res=0;
+						echo "<li>";
+						foreach (scandir($dir) as $item) {
+							if ($item <> '.' and $item <> '..' and $item <> 'Thumbs.db'){
+								$imagen = $dir . $item;
+								$imagenh = "hd_res_" . $item;
+								$imagenr = "res_" . $item;
+								$imagenb = "th_res_" . $item;
+								//echo "Procesando archivo: " . $imagen . " => " . $base . "otros/generagaleria/".$dirf . $imagenr . "<br>";
+								$size = GetImageSize($imagen);
+								$anchura=$size[0];
+								$altura=$size[1]; 
+								if($anchura>$altura){
+									if($res<10){
 								 		$image = new SimpleImage(); 
 								 		$image->load($imagen); 
-								 		$image->resizeToWidth($maxSize); 
-								 		$image->save($dir . "/" . $imagenr);
-								 		$image->resizeToWidth($tmbSize); 
-								 		$image->save($dest . $dirf . "/" . $imagent);
-									}else{
-								 		$image = new SimpleImage(); 
-								 		$image->load($imagen); 
-								 		$image->resizeToHeight($maxSize); 
-								 		$image->save($dir . "/" . $imagenr);
-								 		$image->resizeToHeight($tmbSize); 
-								 		$image->save($dest . $dirf . "/" . $imagent);
+								 		$image->resizeToWidth($maxSize);
+								 		$image->save($base . "otros/generagaleria/".$dirf . "" . $imagenh);
+								 		echo "insert into fotos (id_galeria,description,alto_ancho) "
+											. "values(" . $gal . ",'" . $imagenh . "',2);<br>";
 									}
-									$origen = $dir . $imagenr;
-									$destino = $dir . "n_" . $imagenr;
-									copy($origen,$destino);
-									$dest_dbox = $dest . $dirf . "/" . $imagenr;
-									if(file_exists($dest . $dirf . "/" . $imagent)){
-										$error = 'Imagen Thumbnail NO Encontrada';
-									}
-									if(file_exists($origen)){
-										$destino_temporal = tempnam("tmp/","tmp");
-										marcadeagua($origen, $marcadeagua, $destino_temporal, 100);
+							 		$image = new SimpleImage(); 
+							 		$image->load($imagen); 
+							 		$image->resizeToWidth($midSize);
+							 		$image->save($base . "otros/generagaleria/".$dirf . "" . $imagenr);
+							 		echo "insert into fotos (id_galeria,description,alto_ancho) "
+											. "values(" . $gal . ",'" . $imagenr . "',1);<br>";
+							 		$res++;
+								}else{
+							 		$image = new SimpleImage(); 
+							 		$image->load($imagen); 
+							 		$image->resizeToHeight($midSize); 
+							 		$image->save($base . "otros/generagaleria/".$dirf . "" . $imagenr);
+							 		echo "insert into fotos (id_galeria,description,alto_ancho) "
+											. "values(" . $gal . ",'" . $imagenr . "',0);<br>";
+								}
+								if(file_exists($base . "otros/generagaleria/".$dirf . "" . $imagenh)){
+									$origenh = $base . "otros/generagaleria/".$dirf . "" . $imagenh;
+									$destinoh = $base . "otros/generagaleria/".$dirf . "" . "n_" . $imagenh;
+									$destino_temporal = tempnam("tmp/","tmp");
+									marcadeagua($origenh, $marcadeagua, $destino_temporal, 100);
+									$fph=fopen($destinoh,"w");
+									fputs($fph,fread(fopen($destino_temporal,"r"),filesize($destino_temporal)));
+									fclose($fph);
+									unlink($origenh);
+									rename($destinoh,$origenh);
+								}
+								if(file_exists($base . "otros/generagaleria/".$dirf . "" . $imagenr)){
+									$origen = $base . "otros/generagaleria/".$dirf . "" . $imagenr;
+									$destino = $base . "otros/generagaleria/".$dirf . "" . "n_" . $imagenr;
+									$destino_temporal = tempnam("tmp/","tmp");
+									marcadeagua($origen, $marcadeagua, $destino_temporal, 100);
+									$fp=fopen($destino,"w");
+									fputs($fp,fread(fopen($destino_temporal,"r"),filesize($destino_temporal)));
+									fclose($fp);
+									unlink($origen);
+									rename($destino,$origen);
 
-										// guardamos la imagen
-										$fp=fopen($destino,"w");
-										fputs($fp,fread(fopen($destino_temporal,"r"),filesize($destino_temporal)));
-										fclose($fp);
-										unlink($origen);
-										rename($destino,$origen);
-								 		$image = new SimpleImage(); 
-								 		$image->load($origen); 
-										if($anchura>$altura){
-											$res=1;
-									 		$image->resizeToWidth($maxSize); 
-										} else {
-											$res=0;
-									 		$image->resizeToHeight($maxSize); 
-									 	}
-								 		$image->save($dest . $dirf . "/" . $imagenr);
-								 		if(file_exists($dest . $dirf . "/" . $imagenr)){
-											unlink($origen);
-								 		} else {
-								 			$error = 'Imagen de marca de agua NO Encontrada';
-								 		}
-									} else {
-							 			$error = 'Imagen Resized NO Encontrada';
-							 		}
-							 		if(file_exists($dest . $dirf . "/" . $imagent) && file_exists($dest . $dirf . "/" . $imagenr)){
-										//echo "Proceso exitoso.<br>";
-										echo "insert into fotos (id_galeria,description,alto_ancho) "
-											. "values(" . $gal . ",'" . $imagenr . "'," . $res . ");<br>";
-										$b++;
-							 		} else {
-										echo "<li class='errores'>Proceso fallido: ".$error.".</li>";
-							 		}
-							 	}
-							}
-							if(strlen($_POST['titulo'])>0){
-								echo "insert into galerias values(" . $gal . ",'".$titulogal."'," . $b . ");<br>";
-							}
+									copy($base . "otros/generagaleria/".$dirf . "" . $imagenr, $base . "otros/generagaleria/".$dirf . "" . $imagenb);
+									if(strlen($imagenb)>1){
+										if(file_exists($base . "otros/generagaleria/".$dirf . "" . $imagenb)){
+											$origenb = $base . "otros/generagaleria/".$dirf . "" . $imagenb;
+									 		$image = new SimpleImage(); 
+									 		$image->load($origenb); 
+											if($anchura>$altura){
+									 			$image->resizeToWidth($tmbSize);
+									 		} else {
+									 			$image->resizeToHeight($tmbSize);
+									 		}
+									 		$image->save($origenb);
+										}
+									}
+								}
+							 	$b++;
+						 	}
 						}
+						if(strlen($_POST['titulo'])>0){
+							echo "insert into galerias values(" . $gal . ",'".$titulogal."'," . $b . ");<br>";
+						}
+						echo "</li>";
 					}
 					echo "</ul>";
 				}
